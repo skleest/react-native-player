@@ -217,11 +217,17 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
 - (void)didReceivePlayCommand:(MPRemoteCommand *)event
 {
     [self playAudio];
+    [self.bridge.eventDispatcher
+     sendDeviceEventWithName: @"onRemoteControl"
+     body: @{@"action": @"TOGGLE" }];
 }
 
 - (void)didReceivePauseCommand:(MPRemoteCommand *)event
 {
     [self pauseOrStop:@"PAUSE"];
+    [self.bridge.eventDispatcher
+     sendDeviceEventWithName: @"onRemoteControl"
+     body: @{@"action": @"TOGGLE" }];
 }
 
 - (void)didReceiveToggleCommand:(MPRemoteCommand *)event
@@ -232,6 +238,9 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
     } else {
         [self playAudio];
     }
+    [self.bridge.eventDispatcher
+     sendDeviceEventWithName: @"onRemoteControl"
+     body: @{@"action": @"TOGGLE" }];
 }
 
 - (void)didReceiveNextTrackCommand:(MPRemoteCommand *)event
