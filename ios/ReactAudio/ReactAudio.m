@@ -217,11 +217,17 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
 - (void)didReceivePlayCommand:(MPRemoteCommand *)event
 {
     [self playAudio];
+    [self.bridge.eventDispatcher
+     sendDeviceEventWithName: @"onRemoteControl"
+     body: @{@"action": @"PLAY" }];
 }
 
 - (void)didReceivePauseCommand:(MPRemoteCommand *)event
 {
     [self pauseOrStop:@"PAUSE"];
+    [self.bridge.eventDispatcher
+     sendDeviceEventWithName: @"onRemoteControl"
+     body: @{@"action": @"PAUSE" }];
 }
 
 - (void)didReceiveToggleCommand:(MPRemoteCommand *)event
@@ -229,8 +235,14 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
     // if music is playing
     if (self.player.rate == 1.0f) {
         [self pauseOrStop:@"PAUSE"];
+        [self.bridge.eventDispatcher
+         sendDeviceEventWithName: @"onRemoteControl"
+         body: @{@"action": @"PAUSE" }];
     } else {
         [self playAudio];
+        [self.bridge.eventDispatcher
+         sendDeviceEventWithName: @"onRemoteControl"
+         body: @{@"action": @"PLAY" }];
     }
 }
 
