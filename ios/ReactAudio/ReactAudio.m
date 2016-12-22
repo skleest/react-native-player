@@ -23,9 +23,7 @@
     id<NSObject> playbackTimeObserver;
 }
 
-
 @end
-
 
 @implementation ReactAudio
 
@@ -34,23 +32,18 @@
 
 RCT_EXPORT_MODULE();
 
-
-- (ReactAudio *)init
-{
+- (ReactAudio *)init {
     self = [super init];
     if (self) {
         [self registerRemoteControlEvents];
         NSLog(@"AudioPlayer initialized!");
-        
-        
     }
     
     return self;
 }
 
 
-- (void)dealloc
-{
+- (void)dealloc {
     NSLog(@"dealloc!!");
     [self unregisterRemoteControlEvents];
 }
@@ -59,9 +52,7 @@ RCT_EXPORT_MODULE();
 
 
 RCT_EXPORT_METHOD(prepare:(NSString *)url:(BOOL) bAutoPlay) {
-    
     if(!([url length]>0)) return;
-    
     
     [self.bridge.eventDispatcher sendDeviceEventWithName: @"onPlayerStateChanged"
                                                     body: @{@"playbackState": @4 }];
@@ -75,10 +66,6 @@ RCT_EXPORT_METHOD(prepare:(NSString *)url:(BOOL) bAutoPlay) {
     if(bAutoPlay) {
         [self playAudio];
     }
-    
-    [[NSNotificationCenter defaultCenter]
-     addObserver:self selector:@selector(playFinished:) name:AVPlayerItemDidPlayToEndTimeNotification object:self.playerItem];
-    
 }
 
 RCT_EXPORT_METHOD(songInfo:(NSString *)name title:(NSString *)title url:(NSURL *)url) {
@@ -89,11 +76,10 @@ RCT_EXPORT_METHOD(songInfo:(NSString *)name title:(NSString *)title url:(NSURL *
 }
 
 
-RCT_EXPORT_METHOD(getDuration:(RCTResponseSenderBlock)callback){
+RCT_EXPORT_METHOD(getDuration:(RCTResponseSenderBlock)callback) {
     //this is kind of crude but it will prevent the app from crashing due to a "NAN" return(this allows the getDuration method to be executed in the componentDidMount function of the React class without the app crashing
     while(self.playerItem.status != AVPlayerItemStatusReadyToPlay){
     }
-    
     
     float durationInMilliSeconds = duration * 1000;
     callback(@[[[NSNumber alloc] initWithFloat:durationInMilliSeconds]]);
@@ -134,7 +120,7 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
     [self.player addPeriodicTimeObserverForInterval:CMTimeMakeWithSeconds(1.0, NSEC_PER_SEC) queue:dispatch_get_main_queue() usingBlock:^(CMTime time) {
         
         [weakSelf.bridge.eventDispatcher sendDeviceEventWithName: @"onUpdatePosition"
-                                                        body: @{@"currentPosition": @(CMTimeGetSeconds(time)*1000) }];
+                                                            body: @{@"currentPosition": @(CMTimeGetSeconds(time)*1000) }];
     }];
     
     [self activate];
@@ -145,7 +131,6 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
 }
 
 -(void) pauseOrStop:(NSString *)value {
-    
     if ([value isEqualToString:@"STOP"]) {
         CMTime newTime = CMTimeMakeWithSeconds(0, 1);
         [self.player seekToTime:newTime];
@@ -164,7 +149,7 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
 
 #pragma mark - Audio Session
 
--(void)playFinished:(NSNotification *)notification{
+-(void)playFinished:(NSNotification *)notification {
     [self.playerItem seekToTime:kCMTimeZero];
     
     [self.bridge.eventDispatcher
@@ -173,19 +158,28 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
 }
 
 -(void)activate {
-    
     NSError *categoryError = nil;
     [[AVAudioSession sharedInstance] setActive:YES error:&categoryError];
     [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:&categoryError];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(audioRouteChangeListenerCallback:)
+                                                 name:AVAudioSessionRouteChangeNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter]
+     addObserver:self selector:@selector(playFinished:) name:AVPlayerItemDidPlayToEndTimeNotification object:self.playerItem];
     
     if (categoryError) {
         NSLog(@"Error setting category in activate %@", [categoryError description]);
     }
 }
 
-- (void)deactivate
-{
-    NSLog(@"player rate = %f", self.player.rate);
+- (void)deactivate {
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:AVAudioSessionRouteChangeNotification
+                                                  object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:AVPlayerItemDidPlayToEndTimeNotification
+                                                  object:nil];
+    
     NSError *categoryError = nil;
     [[AVAudioSession sharedInstance] setActive:NO error:&categoryError];
     
@@ -195,12 +189,21 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
 }
 
 
-
-
 #pragma mark - Remote Control Events
 
-- (void)registerRemoteControlEvents
-{
+- (void)audioRouteChangeListenerCallback:(NSNotification*)notification {
+    NSDictionary *interuptionDict = notification.userInfo;
+    NSInteger routeChangeReason = [[interuptionDict valueForKey:AVAudioSessionRouteChangeReasonKey] integerValue];
+    
+    // when headphone was pulled (AVAudioSessionRouteChangeReasonOldDeviceUnavailable)
+    if (routeChangeReason == 2) {
+        [self.bridge.eventDispatcher
+         sendDeviceEventWithName: @"onRemoteControl"
+         body: @{@"action": @"PAUSE" }];
+    }
+}
+
+- (void)registerRemoteControlEvents {
     MPRemoteCommandCenter *commandCenter = [MPRemoteCommandCenter sharedCommandCenter];
     [commandCenter.playCommand addTarget:self action:@selector(didReceivePlayCommand:)];
     [commandCenter.pauseCommand addTarget:self action:@selector(didReceivePauseCommand:)];
@@ -214,24 +217,21 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
     commandCenter.stopCommand.enabled = NO;
 }
 
-- (void)didReceivePlayCommand:(MPRemoteCommand *)event
-{
+- (void)didReceivePlayCommand:(MPRemoteCommand *)event {
     [self playAudio];
     [self.bridge.eventDispatcher
      sendDeviceEventWithName: @"onRemoteControl"
      body: @{@"action": @"PLAY" }];
 }
 
-- (void)didReceivePauseCommand:(MPRemoteCommand *)event
-{
+- (void)didReceivePauseCommand:(MPRemoteCommand *)event {
     [self pauseOrStop:@"PAUSE"];
     [self.bridge.eventDispatcher
      sendDeviceEventWithName: @"onRemoteControl"
      body: @{@"action": @"PAUSE" }];
 }
 
-- (void)didReceiveToggleCommand:(MPRemoteCommand *)event
-{
+- (void)didReceiveToggleCommand:(MPRemoteCommand *)event {
     // if music is playing
     if (self.player.rate == 1.0f) {
         [self pauseOrStop:@"PAUSE"];
@@ -246,22 +246,19 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
     }
 }
 
-- (void)didReceiveNextTrackCommand:(MPRemoteCommand *)event
-{
+- (void)didReceiveNextTrackCommand:(MPRemoteCommand *)event {
     [self.bridge.eventDispatcher
      sendDeviceEventWithName: @"onRemoteControl"
      body: @{@"action": @"NEXT" }];
 }
 
-- (void)didReceivePreviousTrackCommand:(MPRemoteCommand *)event
-{
+- (void)didReceivePreviousTrackCommand:(MPRemoteCommand *)event {
     [self.bridge.eventDispatcher
      sendDeviceEventWithName: @"onRemoteControl"
      body: @{@"action": @"PREV" }];
 }
 
-- (void)unregisterRemoteControlEvents
-{
+- (void)unregisterRemoteControlEvents {
     MPRemoteCommandCenter *commandCenter = [MPRemoteCommandCenter sharedCommandCenter];
     [commandCenter.playCommand removeTarget:self];
     [commandCenter.pauseCommand removeTarget:self];
@@ -270,9 +267,7 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
     [commandCenter.previousTrackCommand removeTarget:self];
 }
 
-- (void)setNowPlayingInfo:(bool)isPlaying
-{
-    
+- (void)setNowPlayingInfo:(bool)isPlaying {
     UIImage *artWork = [UIImage imageWithData:[NSData dataWithContentsOfURL:artWorkUrl]];
     MPMediaItemArtwork *albumArt = [[MPMediaItemArtwork alloc] initWithImage: artWork];
     
