@@ -14,8 +14,7 @@
 #import <Foundation/Foundation.h>
 #import <MediaPlayer/MediaPlayer.h>
 
-@interface ReactAudio()
-{
+@interface ReactAudio() {
     float duration;
     NSString *rapName;
     NSString *songTitle;
@@ -61,11 +60,21 @@ RCT_EXPORT_METHOD(prepare:(NSString *)url:(BOOL) bAutoPlay) {
     self.playerItem = [AVPlayerItem playerItemWithURL:soundUrl];
     self.player = [AVPlayer playerWithPlayerItem:self.playerItem];
     
-    soundUrl = nil;
-    
-    if(bAutoPlay) {
-        [self playAudio];
+    CMTime duration = self.player.currentItem.asset.duration;
+    float seconds = CMTimeGetSeconds(duration);
+
+    if (seconds == 0) {
+        [self.bridge.eventDispatcher
+         sendDeviceEventWithName: @"onPlayerError"
+         body: @{@"action": @"ERROR" }];
+    } else {
+        if(bAutoPlay) {
+            [self playAudio];
+        }
     }
+    
+    soundUrl = nil;
+
 }
 
 RCT_EXPORT_METHOD(songInfo:(NSString *)name title:(NSString *)title url:(NSURL *)url) {
