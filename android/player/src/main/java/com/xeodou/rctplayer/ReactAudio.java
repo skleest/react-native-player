@@ -9,6 +9,7 @@ package com.xeodou.rctplayer;
 import android.net.Uri;
 import android.os.Build;
 import android.support.annotation.Nullable;
+import android.telephony.PhoneStateListener;
 
 import com.facebook.infer.annotation.Assertions;
 import com.facebook.react.bridge.Arguments;
@@ -60,6 +61,14 @@ public class ReactAudio extends ReactContextBaseJavaModule implements ExoPlayer.
         this.context
                 .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
                 .emit(eventName, params);
+    }
+
+    public ExoPlayer getPlayer() {
+        return this.player;
+    }
+
+    public PlayerControl getPlayerControl() {
+        return playerControl;
     }
 
     @ReactMethod

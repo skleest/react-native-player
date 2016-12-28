@@ -17,6 +17,8 @@ import java.util.List;
 
 public class ReactPlayerManager implements ReactPackage {
 
+    private static ReactApplicationContext context = null;
+
     @Override
     public List<Class<? extends JavaScriptModule>> createJSModules() {
         return Collections.emptyList();
@@ -30,11 +32,17 @@ public class ReactPlayerManager implements ReactPackage {
     @Override
     public List<NativeModule> createNativeModules(
             ReactApplicationContext reactContext) {
+
+        context = reactContext;
+
         List<NativeModule> modules = new ArrayList<>();
         modules.add(new ReactAudio(reactContext));
 
         return modules;
     }
 
+    public static ReactApplicationContext getContext() {
+        return context;
+    }
 
 }
