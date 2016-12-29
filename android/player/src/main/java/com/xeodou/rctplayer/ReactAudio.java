@@ -6,10 +6,15 @@
 package com.xeodou.rctplayer;
 
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Build;
 import android.support.annotation.Nullable;
-import android.telephony.PhoneStateListener;
+import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
 
 import com.facebook.infer.annotation.Assertions;
 import com.facebook.react.bridge.Arguments;
@@ -43,13 +48,29 @@ public class ReactAudio extends ReactContextBaseJavaModule implements ExoPlayer.
 
     private ExoPlayer player = null;
     private PlayerControl playerControl = null;
-    private ReactApplicationContext context;
+    private ReactApplicationContext mReactContext;
     private TaskHandle handle = null;
 
     public ReactAudio(ReactApplicationContext reactContext) {
         super(reactContext);
-        this.context = reactContext;
+        this.mReactContext = reactContext;
+
+        // Register receiver
+        LocalBroadcastManager.getInstance(reactContext).registerReceiver(mLocalBroadcastReceiver, new IntentFilter("call-state-event"));
     }
+
+    private BroadcastReceiver mLocalBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            // Get extra data included in the Intent
+            String state = intent.getStringExtra("state");
+            Log.d("receiver", "state : " + state);
+            WritableMap params = Arguments.createMap();
+            params.putString("state", state);
+            sendEvent("onPlaybackStateChanged", params);
+
+        }
+    };
 
     @Override
     public String getName() {
@@ -58,17 +79,9 @@ public class ReactAudio extends ReactContextBaseJavaModule implements ExoPlayer.
 
     private void sendEvent(String eventName,
                            @Nullable WritableMap params) {
-        this.context
+        this.mReactContext
                 .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
                 .emit(eventName, params);
-    }
-
-    public ExoPlayer getPlayer() {
-        return this.player;
-    }
-
-    public PlayerControl getPlayerControl() {
-        return playerControl;
     }
 
     @ReactMethod
@@ -108,7 +121,7 @@ public class ReactAudio extends ReactContextBaseJavaModule implements ExoPlayer.
 
         Allocator allocator = new DefaultAllocator(BUFFER_SEGMENT_SIZE);
 
-        DataSource dataSource = new DefaultUriDataSource(context, agent);
+        DataSource dataSource = new DefaultUriDataSource(mReactContext, agent);
         ExtractorSampleSource sampleSource = new ExtractorSampleSource(uri, dataSource, allocator,
                 BUFFER_SEGMENT_COUNT * BUFFER_SEGMENT_SIZE);
 

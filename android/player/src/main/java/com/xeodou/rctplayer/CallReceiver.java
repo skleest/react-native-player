@@ -3,16 +3,10 @@ package com.xeodou.rctplayer;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.support.annotation.Nullable;
+import android.support.v4.content.LocalBroadcastManager;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.util.Log;
-
-import com.facebook.react.bridge.Arguments;
-import com.facebook.react.bridge.ReactApplicationContext;
-import com.facebook.react.bridge.WritableMap;
-import com.facebook.react.modules.core.DeviceEventManagerModule;
-import com.xeodou.rctplayer.ReactPlayerManager;
 
 /**
  * Created by hunkyojung on 2016. 12. 28..
@@ -43,7 +37,7 @@ public class CallReceiver extends BroadcastReceiver {
                     case TelephonyManager.CALL_STATE_IDLE: {
                         if (isStateIdle) {
                             Log.d(TAG, "CALL_STATE_IDLE");
-                            onPlaybackStateChanged("playing");
+                            sendMessage("playing");
                             isStateIdle = true;
                         }
                         break;
@@ -51,13 +45,13 @@ public class CallReceiver extends BroadcastReceiver {
                     case TelephonyManager.CALL_STATE_OFFHOOK: {
                         isStateIdle = false;
                         Log.d(TAG, "CALL_STATE_OFFHOOK");
-                        onPlaybackStateChanged("paused");
+                        sendMessage("paused");
                         break;
                     }
                     case TelephonyManager.CALL_STATE_RINGING: {
                         isStateIdle = false;
                         Log.d(TAG, "CALL_STATE_RINGING");
-                        onPlaybackStateChanged("paused");
+                        sendMessage("paused");
                         break;
                     }
                     default: {}
@@ -68,23 +62,34 @@ public class CallReceiver extends BroadcastReceiver {
         }
     };
 
-    private void sendEvent(String eventName,
-                           @Nullable WritableMap params) {
-
-        ReactApplicationContext context = ReactPlayerManager.getContext();
-        if(context == null) {
-            return;
-        }
-
-        ReactPlayerManager.getContext()
-                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-                .emit(eventName, params);
+    private void sendMessage(String state) {
+        Log.d("sender", "Broadcasting message");
+        Intent intent = new Intent("call-state-event");
+        // You can also include some extra data.
+        intent.putExtra("state", state);
+        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
     }
 
-    public void onPlaybackStateChanged(String playbackState) {
-        WritableMap params = Arguments.createMap();
-        params.putString("state", playbackState);
+//    public void onPlaybackStateChanged(String playbackState) {
+//        WritableMap params = Arguments.createMap();
+//        params.putString("state", playbackState);
+//    }
 
-        sendEvent("onPlaybackStateChanged", params);
-    }
+//    public class LocalBroadcastService extends IntentService {
+//
+//        private static final String TAG = "LocalBroadcastService";
+//
+//        public InternalService() {
+//            super("LocalBroadcastService");
+//            Log.i(TAG, "Creating intent service.");
+//        }
+//
+//        @Override
+//        protected void onHandleIntent(Intent intent) {
+//            LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
+//            Intent customEvent= new Intent("my-custom-event");
+//            customEvent.putExtra("my-extra-data", "that's it");
+//            localBroadcastManager.sendBroadcast(customEvent);
+//        }
+//    }
 }
