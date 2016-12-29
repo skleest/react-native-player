@@ -202,20 +202,12 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
                                              selector:@selector(onAudioInterruption:)
                                                  name:AVAudioSessionInterruptionNotification
                                                object:nil];
-    // Register for route change notifications
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(onRouteChangeInterruption:)
-                                                 name:AVAudioSessionRouteChangeNotification
-                                               object:nil];
 }
 
 - (void)unregisterAudioInterruptionNotifications
 {
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:AVAudioSessionRouteChangeNotification
-                                                  object:nil];
-    [[NSNotificationCenter defaultCenter] removeObserver:self
-                                                    name:AVAudioSessionInterruptionNotification
                                                   object:nil];
 }
 
