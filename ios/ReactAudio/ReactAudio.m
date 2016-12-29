@@ -35,6 +35,7 @@ RCT_EXPORT_MODULE();
     self = [super init];
     if (self) {
         [self registerRemoteControlEvents];
+        [self registerAudioInterruptionNotifications];
         NSLog(@"AudioPlayer initialized!");
     }
     
@@ -45,6 +46,7 @@ RCT_EXPORT_MODULE();
 - (void)dealloc {
     NSLog(@"dealloc!!");
     [self unregisterRemoteControlEvents];
+    [self unregisterAudioInterruptionNotifications];
 }
 
 #pragma mark - Pubic API
@@ -194,6 +196,60 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
     
     if (categoryError) {
         NSLog(@"Error setting category in deactivate %@", [categoryError description]);
+    }
+}
+
+- (void)registerAudioInterruptionNotifications
+{
+    // Register for audio interrupt notifications
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(onAudioInterruption:)
+                                                 name:AVAudioSessionInterruptionNotification
+                                               object:nil];
+    // Register for route change notifications
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(onRouteChangeInterruption:)
+                                                 name:AVAudioSessionRouteChangeNotification
+                                               object:nil];
+}
+
+- (void)unregisterAudioInterruptionNotifications
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:AVAudioSessionRouteChangeNotification
+                                                  object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:AVAudioSessionInterruptionNotification
+                                                  object:nil];
+}
+
+- (void)onAudioInterruption:(NSNotification *)notification
+{
+    // Get the user info dictionary
+    NSDictionary *interruptionDict = notification.userInfo;
+    
+    // Get the AVAudioSessionInterruptionTypeKey enum from the dictionary
+    NSInteger interuptionType = [[interruptionDict valueForKey:AVAudioSessionInterruptionTypeKey] integerValue];
+    
+    // Decide what to do based on interruption type
+    switch (interuptionType)
+    {
+        case AVAudioSessionInterruptionTypeBegan:
+            [self.bridge.eventDispatcher
+             sendDeviceEventWithName: @"onRemoteControl"
+             body: @{@"action": @"PAUSE" }];
+            break;
+            
+        case AVAudioSessionInterruptionTypeEnded:
+            [self playAudio];
+            [self.bridge.eventDispatcher
+             sendDeviceEventWithName: @"onRemoteControl"
+             body: @{@"action": @"PLAY" }];
+            break;
+            
+        default:
+            NSLog(@"Audio Session Interruption Notification case default.");
+            break;
     }
 }
 
