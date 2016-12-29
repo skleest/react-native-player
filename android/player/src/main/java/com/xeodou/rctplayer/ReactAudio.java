@@ -18,6 +18,7 @@ import android.util.Log;
 
 import com.facebook.infer.annotation.Assertions;
 import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.LifecycleEventListener;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
@@ -38,7 +39,7 @@ import com.google.android.exoplayer.chunk.Format;
 import com.xeodou.rctplayer.JavaScriptTimer.TaskHandle;
 
 
-public class ReactAudio extends ReactContextBaseJavaModule implements ExoPlayer.Listener {
+public class ReactAudio extends ReactContextBaseJavaModule implements ExoPlayer.Listener, LifecycleEventListener {
 
     public static final String REACT_CLASS = "ReactAudio";
 
@@ -57,18 +58,17 @@ public class ReactAudio extends ReactContextBaseJavaModule implements ExoPlayer.
 
         // Register receiver
         LocalBroadcastManager.getInstance(reactContext).registerReceiver(mLocalBroadcastReceiver, new IntentFilter("call-state-event"));
+        reactContext.addLifecycleEventListener(this);
     }
 
     private BroadcastReceiver mLocalBroadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            // Get extra data included in the Intent
-            String state = intent.getStringExtra("state");
-            Log.d("receiver", "state : " + state);
+            String strCallState = intent.getStringExtra("callState");
             WritableMap params = Arguments.createMap();
-            params.putString("state", state);
-            sendEvent("onPlaybackStateChanged", params);
+            params.putString("callState", strCallState);
 
+            sendEvent("onCallStateChanged", params);
         }
     };
 
@@ -340,5 +340,21 @@ public class ReactAudio extends ReactContextBaseJavaModule implements ExoPlayer.
         WritableMap params = Arguments.createMap();
         params.putString("msg", error.getMessage());
         sendEvent("onPlayerError", params);
+    }
+
+    @Override
+    public void onHostResume() {
+        Log.d(REACT_CLASS, "onHostResume");
+    }
+
+    @Override
+    public void onHostPause() {
+        Log.d(REACT_CLASS, "onHostPause");
+    }
+
+    @Override
+    public void onHostDestroy() {
+        Log.d(REACT_CLASS, "onHostDestroy");
+        LocalBroadcastManager.getInstance(mReactContext).unregisterReceiver(mLocalBroadcastReceiver);
     }
 }

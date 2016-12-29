@@ -36,60 +36,33 @@ public class CallReceiver extends BroadcastReceiver {
                 switch (state) {
                     case TelephonyManager.CALL_STATE_IDLE: {
                         if (isStateIdle) {
-                            Log.d(TAG, "CALL_STATE_IDLE");
-                            sendMessage("playing");
+                            sendMessage("CALL_STATE_IDLE");
                             isStateIdle = true;
                         }
                         break;
                     }
                     case TelephonyManager.CALL_STATE_OFFHOOK: {
                         isStateIdle = false;
-                        Log.d(TAG, "CALL_STATE_OFFHOOK");
-                        sendMessage("paused");
+                        sendMessage("CALL_STATE_OFFHOOK");
                         break;
                     }
                     case TelephonyManager.CALL_STATE_RINGING: {
                         isStateIdle = false;
-                        Log.d(TAG, "CALL_STATE_RINGING");
-                        sendMessage("paused");
+                        sendMessage("CALL_STATE_RINGING");
                         break;
                     }
                     default: {}
                 }
-            } catch (Exception ex) {
-
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
     };
 
-    private void sendMessage(String state) {
-        Log.d("sender", "Broadcasting message");
+    private void sendMessage(String strCallState) {
         Intent intent = new Intent("call-state-event");
         // You can also include some extra data.
-        intent.putExtra("state", state);
+        intent.putExtra("callState", strCallState);
         LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
     }
-
-//    public void onPlaybackStateChanged(String playbackState) {
-//        WritableMap params = Arguments.createMap();
-//        params.putString("state", playbackState);
-//    }
-
-//    public class LocalBroadcastService extends IntentService {
-//
-//        private static final String TAG = "LocalBroadcastService";
-//
-//        public InternalService() {
-//            super("LocalBroadcastService");
-//            Log.i(TAG, "Creating intent service.");
-//        }
-//
-//        @Override
-//        protected void onHandleIntent(Intent intent) {
-//            LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(this);
-//            Intent customEvent= new Intent("my-custom-event");
-//            customEvent.putExtra("my-extra-data", "that's it");
-//            localBroadcastManager.sendBroadcast(customEvent);
-//        }
-//    }
 }
