@@ -6,13 +6,19 @@
 package com.xeodou.rctplayer;
 
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Build;
 import android.support.annotation.Nullable;
-import android.telephony.PhoneStateListener;
+import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
 
 import com.facebook.infer.annotation.Assertions;
 import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.LifecycleEventListener;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
@@ -33,7 +39,7 @@ import com.google.android.exoplayer.chunk.Format;
 import com.xeodou.rctplayer.JavaScriptTimer.TaskHandle;
 
 
-public class ReactAudio extends ReactContextBaseJavaModule implements ExoPlayer.Listener {
+public class ReactAudio extends ReactContextBaseJavaModule implements ExoPlayer.Listener, LifecycleEventListener {
 
     public static final String REACT_CLASS = "ReactAudio";
 
@@ -43,13 +49,28 @@ public class ReactAudio extends ReactContextBaseJavaModule implements ExoPlayer.
 
     private ExoPlayer player = null;
     private PlayerControl playerControl = null;
-    private ReactApplicationContext context;
+    private ReactApplicationContext mReactContext;
     private TaskHandle handle = null;
 
     public ReactAudio(ReactApplicationContext reactContext) {
         super(reactContext);
-        this.context = reactContext;
+        this.mReactContext = reactContext;
+
+        // Register receiver
+        LocalBroadcastManager.getInstance(reactContext).registerReceiver(mLocalBroadcastReceiver, new IntentFilter("call-state-event"));
+        reactContext.addLifecycleEventListener(this);
     }
+
+    private BroadcastReceiver mLocalBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String strCallState = intent.getStringExtra("callState");
+            WritableMap params = Arguments.createMap();
+            params.putString("callState", strCallState);
+
+            sendEvent("onCallStateChanged", params);
+        }
+    };
 
     @Override
     public String getName() {
@@ -58,17 +79,9 @@ public class ReactAudio extends ReactContextBaseJavaModule implements ExoPlayer.
 
     private void sendEvent(String eventName,
                            @Nullable WritableMap params) {
-        this.context
+        this.mReactContext
                 .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
                 .emit(eventName, params);
-    }
-
-    public ExoPlayer getPlayer() {
-        return this.player;
-    }
-
-    public PlayerControl getPlayerControl() {
-        return playerControl;
     }
 
     @ReactMethod
@@ -108,7 +121,7 @@ public class ReactAudio extends ReactContextBaseJavaModule implements ExoPlayer.
 
         Allocator allocator = new DefaultAllocator(BUFFER_SEGMENT_SIZE);
 
-        DataSource dataSource = new DefaultUriDataSource(context, agent);
+        DataSource dataSource = new DefaultUriDataSource(mReactContext, agent);
         ExtractorSampleSource sampleSource = new ExtractorSampleSource(uri, dataSource, allocator,
                 BUFFER_SEGMENT_COUNT * BUFFER_SEGMENT_SIZE);
 
@@ -327,5 +340,21 @@ public class ReactAudio extends ReactContextBaseJavaModule implements ExoPlayer.
         WritableMap params = Arguments.createMap();
         params.putString("msg", error.getMessage());
         sendEvent("onPlayerError", params);
+    }
+
+    @Override
+    public void onHostResume() {
+        Log.d(REACT_CLASS, "onHostResume");
+    }
+
+    @Override
+    public void onHostPause() {
+        Log.d(REACT_CLASS, "onHostPause");
+    }
+
+    @Override
+    public void onHostDestroy() {
+        Log.d(REACT_CLASS, "onHostDestroy");
+        LocalBroadcastManager.getInstance(mReactContext).unregisterReceiver(mLocalBroadcastReceiver);
     }
 }

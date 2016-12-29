@@ -3,16 +3,10 @@ package com.xeodou.rctplayer;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.support.annotation.Nullable;
+import android.support.v4.content.LocalBroadcastManager;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.util.Log;
-
-import com.facebook.react.bridge.Arguments;
-import com.facebook.react.bridge.ReactApplicationContext;
-import com.facebook.react.bridge.WritableMap;
-import com.facebook.react.modules.core.DeviceEventManagerModule;
-import com.xeodou.rctplayer.ReactPlayerManager;
 
 /**
  * Created by hunkyojung on 2016. 12. 28..
@@ -42,49 +36,33 @@ public class CallReceiver extends BroadcastReceiver {
                 switch (state) {
                     case TelephonyManager.CALL_STATE_IDLE: {
                         if (isStateIdle) {
-                            Log.d(TAG, "CALL_STATE_IDLE");
-                            onPlaybackStateChanged("playing");
+                            sendMessage("CALL_STATE_IDLE");
                             isStateIdle = true;
                         }
                         break;
                     }
                     case TelephonyManager.CALL_STATE_OFFHOOK: {
                         isStateIdle = false;
-                        Log.d(TAG, "CALL_STATE_OFFHOOK");
-                        onPlaybackStateChanged("paused");
+                        sendMessage("CALL_STATE_OFFHOOK");
                         break;
                     }
                     case TelephonyManager.CALL_STATE_RINGING: {
                         isStateIdle = false;
-                        Log.d(TAG, "CALL_STATE_RINGING");
-                        onPlaybackStateChanged("paused");
+                        sendMessage("CALL_STATE_RINGING");
                         break;
                     }
                     default: {}
                 }
-            } catch (Exception ex) {
-
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
     };
 
-    private void sendEvent(String eventName,
-                           @Nullable WritableMap params) {
-
-        ReactApplicationContext context = ReactPlayerManager.getContext();
-        if(context == null) {
-            return;
-        }
-
-        ReactPlayerManager.getContext()
-                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-                .emit(eventName, params);
-    }
-
-    public void onPlaybackStateChanged(String playbackState) {
-        WritableMap params = Arguments.createMap();
-        params.putString("state", playbackState);
-
-        sendEvent("onPlaybackStateChanged", params);
+    private void sendMessage(String strCallState) {
+        Intent intent = new Intent("call-state-event");
+        // You can also include some extra data.
+        intent.putExtra("callState", strCallState);
+        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
     }
 }
