@@ -135,21 +135,17 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
     }];
     
     [self activate];
-    if (rapName) {
-        [self setNowPlayingInfo:true];
-    }
-    
 }
 
 -(void) pauseOrStop:(NSString *)value {
+    [self.player pause];
+    
     if ([value isEqualToString:@"STOP"]) {
         CMTime newTime = CMTimeMakeWithSeconds(0, 1);
         [self.player seekToTime:newTime];
+    } else {
+        [self deactivate];
     }
-    
-    [self.player pause];
-    [self deactivate];
-    [self setNowPlayingInfo:false];
     
     if (playbackTimeObserver) {
         [self.player removeTimeObserver:playbackTimeObserver];
