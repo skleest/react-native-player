@@ -55,9 +55,6 @@ RCT_EXPORT_MODULE();
 RCT_EXPORT_METHOD(prepare:(NSString *)url:(BOOL) bAutoPlay) {
     if(!([url length]>0)) return;
     
-    [self.bridge.eventDispatcher sendDeviceEventWithName: @"onPlayerStateChanged"
-                                                    body: @{@"playbackState": @4 }];
-    
     NSURL *soundUrl = [[NSURL alloc] initWithString:url];
     self.playerItem = [AVPlayerItem playerItemWithURL:soundUrl];
     self.player = [AVPlayer playerWithPlayerItem:self.playerItem];
@@ -70,13 +67,14 @@ RCT_EXPORT_METHOD(prepare:(NSString *)url:(BOOL) bAutoPlay) {
          sendDeviceEventWithName: @"onPlayerError"
          body: @{@"action": @"ERROR" }];
     } else {
+        [self.bridge.eventDispatcher sendDeviceEventWithName: @"onPlayerStateChanged"
+                                                        body: @{@"playbackState": @4 }];
         if(bAutoPlay) {
             [self playAudio];
         }
     }
     
     soundUrl = nil;
-
 }
 
 RCT_EXPORT_METHOD(songInfo:(NSString *)name title:(NSString *)title url:(NSURL *)url) {
@@ -85,17 +83,6 @@ RCT_EXPORT_METHOD(songInfo:(NSString *)name title:(NSString *)title url:(NSURL *
     artWorkUrl = url;
     [self setNowPlayingInfo:true];
 }
-
-
-RCT_EXPORT_METHOD(getDuration:(RCTResponseSenderBlock)callback) {
-    //this is kind of crude but it will prevent the app from crashing due to a "NAN" return(this allows the getDuration method to be executed in the componentDidMount function of the React class without the app crashing
-    while(self.playerItem.status != AVPlayerItemStatusReadyToPlay){
-    }
-    
-    float durationInMilliSeconds = duration * 1000;
-    callback(@[[[NSNumber alloc] initWithFloat:durationInMilliSeconds]]);
-}
-
 
 RCT_EXPORT_METHOD(play) {
     [self playAudio];
