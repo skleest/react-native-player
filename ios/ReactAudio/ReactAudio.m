@@ -111,7 +111,6 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
 -(void) playAudio {
     [self.player play];
     
-    //center = [MPNowPlayingInfoCenter defaultCenter];
     // we need a weak self here for in-block access
     __weak typeof(self) weakSelf = self;
     
