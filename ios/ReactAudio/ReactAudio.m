@@ -1,10 +1,3 @@
-//
-//  MyObjcClass.m
-//  use_nativeModules
-//
-//  Created by Q on 2016. 8. 25..
-//  Copyright © 2016년 Facebook. All rights reserved.
-//
 
 #import "ReactAudio.h"
 #import "RCTBridge.h"
@@ -20,6 +13,10 @@
     NSString *songTitle;
     NSURL *artWorkUrl;
     id<NSObject> playbackTimeObserver;
+    MPNowPlayingInfoCenter *center;
+    NSDictionary *songInfo;
+    MPMediaItemArtwork *albumArt;
+    MPMediaItemArtwork *defaultAlbumArt;
 }
 
 @end
@@ -36,6 +33,9 @@ RCT_EXPORT_MODULE();
     if (self) {
         [self registerRemoteControlEvents];
         [self registerAudioInterruptionNotifications];
+        UIImage *defaultArtwork = [UIImage imageWithData:[NSData dataWithContentsOfURL: [NSURL URLWithString:@"https://d15t9uzqc3auqc.cloudfront.net/images/default_images/default_artwork-t300x300.png"]]];
+        defaultAlbumArt = [[MPMediaItemArtwork alloc] initWithImage: defaultArtwork];
+        center = [MPNowPlayingInfoCenter defaultCenter];
         NSLog(@"AudioPlayer initialized!");
     }
     
@@ -47,6 +47,7 @@ RCT_EXPORT_MODULE();
     NSLog(@"dealloc!!");
     [self unregisterRemoteControlEvents];
     [self unregisterAudioInterruptionNotifications];
+    defaultAlbumArt = nil;
 }
 
 #pragma mark - Pubic API
@@ -59,10 +60,10 @@ RCT_EXPORT_METHOD(prepare:(NSString *)url:(BOOL) bAutoPlay) {
     self.playerItem = [AVPlayerItem playerItemWithURL:soundUrl];
     self.player = [AVPlayer playerWithPlayerItem:self.playerItem];
     
-    CMTime duration = self.player.currentItem.asset.duration;
-    float seconds = CMTimeGetSeconds(duration);
+    CMTime assetDuration = self.player.currentItem.asset.duration;
+    duration = CMTimeGetSeconds(assetDuration);
 
-    if (seconds == 0) {
+    if (duration == 0) {
         [self.bridge.eventDispatcher
          sendDeviceEventWithName: @"onPlayerError"
          body: @{@"action": @"ERROR" }];
@@ -105,7 +106,6 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
     [self.player seekToTime:newTime];
 }
 
-
 #pragma mark - Audio
 
 -(void) playAudio {
@@ -119,6 +119,15 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
         
         [weakSelf.bridge.eventDispatcher sendDeviceEventWithName: @"onUpdatePosition"
                                                             body: @{@"currentPosition": @(CMTimeGetSeconds(time)*1000) }];
+        songInfo = @{
+                     MPMediaItemPropertyTitle: rapName,
+                     MPMediaItemPropertyArtist: songTitle,
+                     MPNowPlayingInfoPropertyPlaybackRate: [NSNumber numberWithFloat: 1.0f],
+                     MPMediaItemPropertyPlaybackDuration: [NSNumber numberWithFloat:duration],
+                     MPNowPlayingInfoPropertyElapsedPlaybackTime: [NSNumber numberWithDouble:self.currentPlaybackTime],
+                     MPMediaItemPropertyArtwork: albumArt ? albumArt : defaultAlbumArt
+                     };
+        center.nowPlayingInfo = songInfo;
     }];
     
     [self activate];
@@ -127,9 +136,20 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
 -(void) pauseOrStop:(NSString *)value {
     [self.player pause];
     
+    songInfo = @{
+                 MPMediaItemPropertyTitle: rapName,
+                 MPMediaItemPropertyArtist: songTitle,
+                 MPNowPlayingInfoPropertyPlaybackRate: [NSNumber numberWithFloat: 0.0],
+                 MPMediaItemPropertyPlaybackDuration: [NSNumber numberWithFloat:duration],
+                 MPNowPlayingInfoPropertyElapsedPlaybackTime: [NSNumber numberWithDouble:self.currentPlaybackTime],
+                 MPMediaItemPropertyArtwork: albumArt ? albumArt : defaultAlbumArt
+                 };
+    center.nowPlayingInfo = songInfo;
+    
     if ([value isEqualToString:@"STOP"]) {
         CMTime newTime = CMTimeMakeWithSeconds(0, 1);
         [self.player seekToTime:newTime];
+        albumArt = nil;
     } else {
         [self deactivate];
     }
@@ -139,6 +159,15 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
         playbackTimeObserver = nil;
     }
 }
+
+- (NSTimeInterval)currentPlaybackTime {
+    CMTime time = self.player.currentTime;
+    if (CMTIME_IS_VALID(time)) {
+        return time.value / time.timescale;
+    }
+    return 0;
+}
+
 
 
 #pragma mark - Audio Session
@@ -309,18 +338,14 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
 
 - (void)setNowPlayingInfo:(bool)isPlaying {
     UIImage *artWork = [UIImage imageWithData:[NSData dataWithContentsOfURL:artWorkUrl]];
-    MPMediaItemArtwork *albumArt = [[MPMediaItemArtwork alloc] initWithImage: artWork];
-    
-    MPNowPlayingInfoCenter *center = [MPNowPlayingInfoCenter defaultCenter];
-    NSDictionary *songInfo = @{
-                               MPMediaItemPropertyTitle: rapName,
-                               MPMediaItemPropertyArtist: songTitle,
-                               MPNowPlayingInfoPropertyPlaybackRate: [NSNumber numberWithFloat:isPlaying ? 1.0f : 0.0],
-                               MPMediaItemPropertyPlaybackDuration: [NSNumber numberWithFloat:duration],
-                               MPMediaItemPropertyArtwork: albumArt
-                               };
+    albumArt = [[MPMediaItemArtwork alloc] initWithImage: artWork];
+    songInfo = @{
+                 MPMediaItemPropertyTitle: rapName,
+                 MPMediaItemPropertyArtist: songTitle,
+                 MPNowPlayingInfoPropertyPlaybackRate: [NSNumber numberWithFloat:isPlaying ? 1.0f : 0.0],
+                 MPMediaItemPropertyArtwork: albumArt ? albumArt : defaultAlbumArt
+                 };
     center.nowPlayingInfo = songInfo;
-    albumArt = nil;
 }
 
 
