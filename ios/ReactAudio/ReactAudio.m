@@ -59,6 +59,7 @@ RCT_EXPORT_METHOD(prepare:(NSString *)url:(BOOL) bAutoPlay) {
     NSURL *soundUrl = [[NSURL alloc] initWithString:url];
     self.playerItem = [AVPlayerItem playerItemWithURL:soundUrl];
     self.player = [AVPlayer playerWithPlayerItem:self.playerItem];
+    self.player.automaticallyWaitsToMinimizeStalling = false;
     
     CMTime assetDuration = self.player.currentItem.asset.duration;
     duration = CMTimeGetSeconds(assetDuration);
