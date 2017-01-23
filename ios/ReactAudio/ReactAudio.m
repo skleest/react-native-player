@@ -137,22 +137,21 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
 -(void) pauseOrStop:(NSString *)value {
     [self.player pause];
     
-    songInfo = @{
-                 MPMediaItemPropertyTitle: rapName,
-                 MPMediaItemPropertyArtist: songTitle,
-                 MPNowPlayingInfoPropertyPlaybackRate: [NSNumber numberWithFloat: 0.0],
-                 MPMediaItemPropertyPlaybackDuration: [NSNumber numberWithFloat:duration],
-                 MPNowPlayingInfoPropertyElapsedPlaybackTime: [NSNumber numberWithDouble:self.currentPlaybackTime],
-                 MPMediaItemPropertyArtwork: albumArt ? albumArt : defaultAlbumArt
-                 };
-    center.nowPlayingInfo = songInfo;
-    
     if ([value isEqualToString:@"STOP"]) {
         CMTime newTime = CMTimeMakeWithSeconds(0, 1);
         [self.player seekToTime:newTime];
         albumArt = nil;
     } else {
         [self deactivate];
+        songInfo = @{
+                     MPMediaItemPropertyTitle: rapName,
+                     MPMediaItemPropertyArtist: songTitle,
+                     MPNowPlayingInfoPropertyPlaybackRate: [NSNumber numberWithFloat: 0.0],
+                     MPMediaItemPropertyPlaybackDuration: [NSNumber numberWithFloat:duration],
+                     MPNowPlayingInfoPropertyElapsedPlaybackTime: [NSNumber numberWithDouble:self.currentPlaybackTime],
+                     MPMediaItemPropertyArtwork: albumArt ? albumArt : defaultAlbumArt
+                     };
+        center.nowPlayingInfo = songInfo;
     }
     
     if (playbackTimeObserver) {
