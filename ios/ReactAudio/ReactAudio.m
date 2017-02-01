@@ -33,7 +33,7 @@ RCT_EXPORT_MODULE();
     if (self) {
         [self registerRemoteControlEvents];
         [self registerAudioInterruptionNotifications];
-        UIImage *defaultArtwork = [UIImage imageWithData:[NSData dataWithContentsOfURL: [NSURL URLWithString:@"https://d15t9uzqc3auqc.cloudfront.net/images/default_images/default_artwork-t300x300.png"]]];
+        UIImage *defaultArtwork = [UIImage imageNamed:@"default_artwork-t300x300"];
         defaultAlbumArt = [[MPMediaItemArtwork alloc] initWithImage: defaultArtwork];
         center = [MPNowPlayingInfoCenter defaultCenter];
         NSLog(@"AudioPlayer initialized!");
