@@ -6,7 +6,7 @@
 //  Copyright © 2016년 Facebook. All rights reserved.
 //
 
-#import "RCTBridgeModule.h"
+#import <React/RCTBridgeModule.h>
 @import AVFoundation;
 
 
