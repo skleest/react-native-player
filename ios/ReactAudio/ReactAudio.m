@@ -47,6 +47,7 @@ RCT_EXPORT_MODULE();
     NSLog(@"dealloc!!");
     [self unregisterRemoteControlEvents];
     [self unregisterAudioInterruptionNotifications];
+    [self deactivate];
     defaultAlbumArt = nil;
 }
 
@@ -60,21 +61,7 @@ RCT_EXPORT_METHOD(prepare:(NSString *)url:(BOOL) bAutoPlay) {
     self.playerItem = [AVPlayerItem playerItemWithURL:soundUrl];
     self.player = [AVPlayer playerWithPlayerItem:self.playerItem];
     self.player.automaticallyWaitsToMinimizeStalling = false;
-    
-    CMTime assetDuration = self.player.currentItem.asset.duration;
-    duration = CMTimeGetSeconds(assetDuration);
-
-    if (duration == 0) {
-        [self.bridge.eventDispatcher
-         sendDeviceEventWithName: @"onPlayerError"
-         body: @{@"action": @"ERROR" }];
-    } else {
-        [self.bridge.eventDispatcher sendDeviceEventWithName: @"onPlayerStateChanged"
-                                                        body: @{@"playbackState": @4 }];
-        if(bAutoPlay) {
-            [self playAudio];
-        }
-    }
+    [self.playerItem addObserver:self forKeyPath:@"status" options:0 context:nil];
     
     soundUrl = nil;
 }
@@ -84,6 +71,8 @@ RCT_EXPORT_METHOD(songInfo:(NSString *)name title:(NSString *)title url:(NSURL *
     songTitle = title;
     artWorkUrl = url;
     [self setNowPlayingInfo:true];
+    CMTime assetDuration = self.player.currentItem.asset.duration;
+    duration = CMTimeGetSeconds(assetDuration);
 }
 
 RCT_EXPORT_METHOD(play) {
@@ -168,6 +157,20 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
     return 0;
 }
 
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object
+                        change:(NSDictionary *)change context:(void *)context {
+    if (object == self.player.currentItem && [keyPath isEqualToString:@"status"]) {
+        if (self.player.currentItem.status == AVPlayerItemStatusFailed) {
+            [self.bridge.eventDispatcher
+             sendDeviceEventWithName: @"onPlayerError"
+             body: @{@"action": @"ERROR" }];
+        } else if (self.player.currentItem.status == AVPlayerItemStatusReadyToPlay) {
+            [self.bridge.eventDispatcher sendDeviceEventWithName: @"onPlayerStateChanged"
+                                                            body: @{@"playbackState": @4 }];
+            [self playAudio];
+        }
+    }
+}
 
 
 #pragma mark - Audio Session
