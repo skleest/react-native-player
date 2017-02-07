@@ -129,6 +129,7 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
     if ([value isEqualToString:@"STOP"]) {
         CMTime newTime = CMTimeMakeWithSeconds(0, 1);
         [self.player seekToTime:newTime];
+        [self.playerItem removeObserver:self forKeyPath:@"status"];
         albumArt = nil;
     } else {
         [self deactivate];
