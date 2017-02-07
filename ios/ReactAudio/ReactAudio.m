@@ -162,9 +162,8 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
                         change:(NSDictionary *)change context:(void *)context {
     if (object == self.player.currentItem && [keyPath isEqualToString:@"status"]) {
         if (self.player.currentItem.status == AVPlayerItemStatusFailed) {
-            [self.bridge.eventDispatcher
-             sendDeviceEventWithName: @"onPlayerError"
-             body: @{@"action": @"ERROR" }];
+            [self.bridge.eventDispatcher sendDeviceEventWithName: @"onPlayerError"
+                                                            body: @{@"action": @"ERROR" }];
         } else if (self.player.currentItem.status == AVPlayerItemStatusReadyToPlay) {
             [self.bridge.eventDispatcher sendDeviceEventWithName: @"onPlayerStateChanged"
                                                             body: @{@"playbackState": @4 }];
@@ -178,21 +177,29 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
 
 -(void)playFinished:(NSNotification *)notification {
     [self.playerItem seekToTime:kCMTimeZero];
-    
-    [self.bridge.eventDispatcher
-     sendDeviceEventWithName: @"onPlayerStateChanged"
-     body: @{@"playbackState": @5 }];
+    [self.bridge.eventDispatcher sendDeviceEventWithName: @"onPlayerStateChanged"
+                                                    body: @{@"playbackState": @5 }];
+}
+
+-(void)playStalled:(NSNotification *)notification {
+    [self.bridge.eventDispatcher sendDeviceEventWithName: @"onRemoteControl"
+                                                    body: @{@"action": @"PAUSE" }];
 }
 
 -(void)activate {
     NSError *categoryError = nil;
+    
     [[AVAudioSession sharedInstance] setActive:YES error:&categoryError];
     [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:&categoryError];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(audioRouteChangeListenerCallback:)
                                                  name:AVAudioSessionRouteChangeNotification
                                                object:nil];
-    [[NSNotificationCenter defaultCenter]
-     addObserver:self selector:@selector(playFinished:) name:AVPlayerItemDidPlayToEndTimeNotification object:self.playerItem];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(playFinished:)
+                                                 name:AVPlayerItemDidPlayToEndTimeNotification
+                                               object:self.playerItem];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(playStalled:)
+                                                 name:AVPlayerItemPlaybackStalledNotification
+                                               object:self.playerItem];
     
     if (categoryError) {
         NSLog(@"Error setting category in activate %@", [categoryError description]);
@@ -200,14 +207,18 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
 }
 
 - (void)deactivate {
+    NSError *categoryError = nil;
+    
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:AVAudioSessionRouteChangeNotification
                                                   object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:AVPlayerItemDidPlayToEndTimeNotification
-                                                  object:nil];
+                                                  object:self.playerItem];
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:AVPlayerItemPlaybackStalledNotification
+                                                  object:self.playerItem];
     
-    NSError *categoryError = nil;
     [[AVAudioSession sharedInstance] setActive:NO error:&categoryError];
     
     if (categoryError) {
@@ -243,16 +254,14 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
     switch (interuptionType)
     {
         case AVAudioSessionInterruptionTypeBegan:
-            [self.bridge.eventDispatcher
-             sendDeviceEventWithName: @"onRemoteControl"
-             body: @{@"action": @"PAUSE" }];
+            [self.bridge.eventDispatcher sendDeviceEventWithName: @"onRemoteControl"
+                                                            body: @{@"action": @"PAUSE" }];
             break;
             
         case AVAudioSessionInterruptionTypeEnded:
             [self playAudio];
-            [self.bridge.eventDispatcher
-             sendDeviceEventWithName: @"onRemoteControl"
-             body: @{@"action": @"PLAY" }];
+            [self.bridge.eventDispatcher sendDeviceEventWithName: @"onRemoteControl"
+                                                            body: @{@"action": @"PLAY" }];
             break;
             
         default:
@@ -270,9 +279,8 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
     
     // when headphone was pulled (AVAudioSessionRouteChangeReasonOldDeviceUnavailable)
     if (routeChangeReason == 2) {
-        [self.bridge.eventDispatcher
-         sendDeviceEventWithName: @"onRemoteControl"
-         body: @{@"action": @"PAUSE" }];
+        [self.bridge.eventDispatcher sendDeviceEventWithName: @"onRemoteControl"
+                                                        body: @{@"action": @"PAUSE" }];
     }
 }
 
@@ -292,43 +300,37 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
 
 - (void)didReceivePlayCommand:(MPRemoteCommand *)event {
     [self playAudio];
-    [self.bridge.eventDispatcher
-     sendDeviceEventWithName: @"onRemoteControl"
-     body: @{@"action": @"PLAY" }];
+    [self.bridge.eventDispatcher sendDeviceEventWithName: @"onRemoteControl"
+                                                    body: @{@"action": @"PLAY" }];
 }
 
 - (void)didReceivePauseCommand:(MPRemoteCommand *)event {
     [self pauseOrStop:@"PAUSE"];
-    [self.bridge.eventDispatcher
-     sendDeviceEventWithName: @"onRemoteControl"
-     body: @{@"action": @"PAUSE" }];
+    [self.bridge.eventDispatcher sendDeviceEventWithName: @"onRemoteControl"
+                                                    body: @{@"action": @"PAUSE" }];
 }
 
 - (void)didReceiveToggleCommand:(MPRemoteCommand *)event {
     // if music is playing
     if (self.player.rate == 1.0f) {
         [self pauseOrStop:@"PAUSE"];
-        [self.bridge.eventDispatcher
-         sendDeviceEventWithName: @"onRemoteControl"
-         body: @{@"action": @"PAUSE" }];
+        [self.bridge.eventDispatcher sendDeviceEventWithName: @"onRemoteControl"
+                                                        body: @{@"action": @"PAUSE" }];
     } else {
         [self playAudio];
-        [self.bridge.eventDispatcher
-         sendDeviceEventWithName: @"onRemoteControl"
-         body: @{@"action": @"PLAY" }];
+        [self.bridge.eventDispatcher sendDeviceEventWithName: @"onRemoteControl"
+                                                        body: @{@"action": @"PLAY" }];
     }
 }
 
 - (void)didReceiveNextTrackCommand:(MPRemoteCommand *)event {
-    [self.bridge.eventDispatcher
-     sendDeviceEventWithName: @"onRemoteControl"
-     body: @{@"action": @"NEXT" }];
+    [self.bridge.eventDispatcher sendDeviceEventWithName: @"onRemoteControl"
+                                                    body: @{@"action": @"NEXT" }];
 }
 
 - (void)didReceivePreviousTrackCommand:(MPRemoteCommand *)event {
-    [self.bridge.eventDispatcher
-     sendDeviceEventWithName: @"onRemoteControl"
-     body: @{@"action": @"PREV" }];
+    [self.bridge.eventDispatcher sendDeviceEventWithName: @"onRemoteControl"
+                                                    body: @{@"action": @"PREV" }];
 }
 
 - (void)unregisterRemoteControlEvents {
