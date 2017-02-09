@@ -62,6 +62,7 @@ RCT_EXPORT_METHOD(prepare:(NSString *)url:(BOOL) bAutoPlay) {
     self.player = [AVPlayer playerWithPlayerItem:self.playerItem];
     self.player.automaticallyWaitsToMinimizeStalling = false;
     [self.playerItem addObserver:self forKeyPath:@"status" options:0 context:nil];
+    [self.playerItem addObserver:self forKeyPath:@"playbackLikelyToKeepUp" options:NSKeyValueObservingOptionNew context:nil];
     
     soundUrl = nil;
 }
@@ -130,6 +131,7 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
         CMTime newTime = CMTimeMakeWithSeconds(0, 1);
         [self.player seekToTime:newTime];
         [self.playerItem removeObserver:self forKeyPath:@"status"];
+        [self.playerItem removeObserver:self forKeyPath:@"playbackLikelyToKeepUp"];
         albumArt = nil;
     } else {
         [self deactivate];
@@ -168,6 +170,13 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
             [self.bridge.eventDispatcher sendDeviceEventWithName: @"onPlayerStateChanged"
                                                             body: @{@"playbackState": @4 }];
             [self playAudio];
+        }
+    } else if (object == self.player.currentItem && [keyPath isEqualToString:@"playbackLikelyToKeepUp"]) {
+        // check if player has paused && player has begun playing
+        if (!self.player.rate && CMTIME_COMPARE_INLINE(self.player.currentItem.currentTime, >, kCMTimeZero)) {
+            [self playAudio];
+            [self.bridge.eventDispatcher sendDeviceEventWithName: @"onRemoteControl"
+                                                            body: @{@"action": @"PLAY" }];
         }
     }
 }
