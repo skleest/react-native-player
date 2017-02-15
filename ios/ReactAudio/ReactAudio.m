@@ -263,14 +263,18 @@ RCT_EXPORT_METHOD(seekTo:(int) nSecond) {
     switch (interuptionType)
     {
         case AVAudioSessionInterruptionTypeBegan:
-            [self.bridge.eventDispatcher sendDeviceEventWithName: @"onRemoteControl"
-                                                            body: @{@"action": @"PAUSE" }];
+            if (duration != 0 && self.player.rate) {
+                [self.bridge.eventDispatcher sendDeviceEventWithName: @"onRemoteControl"
+                                                                body: @{@"action": @"PAUSE" }];
+            }
             break;
             
         case AVAudioSessionInterruptionTypeEnded:
-            [self playAudio];
-            [self.bridge.eventDispatcher sendDeviceEventWithName: @"onRemoteControl"
+            if (duration != 0 && !self.player.rate) {
+                [self playAudio];
+                [self.bridge.eventDispatcher sendDeviceEventWithName: @"onRemoteControl"
                                                             body: @{@"action": @"PLAY" }];
+            }
             break;
             
         default:
