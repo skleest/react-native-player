@@ -52,6 +52,8 @@ public class ReactAudio extends ReactContextBaseJavaModule implements ExoPlayer.
     private ReactApplicationContext mReactContext;
     private TaskHandle handle = null;
 
+    public int lastPosition = 0;
+
     public ReactAudio(ReactApplicationContext reactContext) {
         super(reactContext);
         this.mReactContext = reactContext;
@@ -154,6 +156,12 @@ public class ReactAudio extends ReactContextBaseJavaModule implements ExoPlayer.
     @ReactMethod
     public void start() {
         Assertions.assertNotNull(player);
+        Log.d("aura", Integer.toString(lastPosition));
+        if (lastPosition != 0) {
+          playerControl.seekTo(lastPosition);
+        } else {
+          playerControl.seekTo(10000);
+        }
         playerControl.start();
 
         // Send event for current position to JS
@@ -278,6 +286,8 @@ public class ReactAudio extends ReactContextBaseJavaModule implements ExoPlayer.
         handle = JavaScriptTimer.setInterval(new Runnable() {
             public void run() {
                 int currentPosition = playerControl.getCurrentPosition();
+                lastPosition = currentPosition;
+                Log.d("aura", Integer.toString(lastPosition));
 
                 WritableMap params = Arguments.createMap();
                 params.putInt("currentPosition", currentPosition);
