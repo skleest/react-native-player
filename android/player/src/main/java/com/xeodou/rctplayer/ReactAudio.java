@@ -286,11 +286,13 @@ public class ReactAudio extends ReactContextBaseJavaModule implements ExoPlayer.
         handle = JavaScriptTimer.setInterval(new Runnable() {
             public void run() {
                 int currentPosition = playerControl.getCurrentPosition();
+                int duration = playerControl.getDuration();
                 lastPosition = currentPosition;
                 Log.d("aura", Integer.toString(lastPosition));
 
                 WritableMap params = Arguments.createMap();
                 params.putInt("currentPosition", currentPosition);
+                params.putInt("duration", duration);
 
                 sendEvent("onUpdatePosition", params);
             }
