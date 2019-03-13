@@ -170,11 +170,16 @@ public class ReactAudio extends ReactContextBaseJavaModule implements ExoPlayer.
 
     @ReactMethod
     public void pause() {
-        Assertions.assertNotNull(player);
-        playerControl.pause();
-
-        // clear setInterval
-        handle.invalidate();
+        try{
+            if(player != null){
+                Assertions.assertNotNull(player);
+                playerControl.pause();
+                // clear setInterval
+                handle.invalidate();
+            }
+        } catch(Exception e){
+            Log.d("aura pause error", e.toString());
+        }
     }
 
     @ReactMethod
